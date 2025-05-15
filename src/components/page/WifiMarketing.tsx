@@ -17,17 +17,16 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { submitWifiForm } from '@/lib/action/wifi.action'
+import { FormWifi, TFormWifi } from '@/lib/validation/formWifi.zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { startTransition, useActionState } from 'react'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 
 export const WifiMarketing = () => {
   const searchParams = useSearchParams()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
 
   // Get URL parameters directly without state
   const site = searchParams.get('site') || ''
@@ -36,75 +35,75 @@ export const WifiMarketing = () => {
   const apMac = searchParams.get('apMac') || ''
   const ssid = searchParams.get('ssidName') || ''
 
-  const formSchema = z.object({
-    name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-    phone: z
-      .string()
-      .min(10, { message: 'Please enter a valid phone number' })
-      .regex(/^[0-9+\-\s()]*$/, {
-        message: 'Please enter a valid phone number',
-      }),
-  })
-
-  type FormValues = z.infer<typeof formSchema>
-
   // Initialize form
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<TFormWifi>({
+    resolver: zodResolver(FormWifi),
     defaultValues: {
       name: '',
       phone: '',
+      clientMac,
+      apMac,
+      site,
+      ssid,
     },
   })
 
+  const [actionStatus, formAction, isPending] = useActionState(submitWifiForm, {
+    serverStatus: undefined,
+    error: undefined,
+  })
+
+  const formSubmitAction = form.handleSubmit(async (data) => {
+    startTransition(() => {
+      formAction(data)
+    })
+  })
+
   // Handle form submission
-  async function onSubmit(data: FormValues) {
-    setIsSubmitting(true)
+  //   async function onSubmit(data: FormValues) {
+  //     setIsSubmitting(true)
 
-    try {
-      // Log all form data and URL parameters
-      const formData = {
-        ...data,
-        clientMac,
-        apMac,
-        site,
-        ssid,
-        token,
-      }
+  //     try {
+  //       // Log all form data and URL parameters
+  //       const formData = {
+  //         ...data,
+  //         clientMac,
+  //         apMac,
+  //         site,
+  //         ssid,
+  //         token,
+  //       }
 
-      console.log('Form submission data:', formData)
+  //       console.log('Form submission data:', formData)
 
-      const params = new URLSearchParams({
-        name: data.name,
-        phone: data.phone,
-        clientMac: clientMac,
-        apMac: apMac,
-        site: site,
-        ssid: ssid,
-        token: token,
-      })
+  //       const response = await fetch(`/api/omada-auth`, {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify(formData),
+  //       })
 
-      const response = await fetch(`/api/omada-auth?${params.toString()}`, {
-        method: 'GET',
-      })
+  //       if (!response.ok) {
+  //         const errorData = await response.json()
+  //         throw new Error(
+  //           errorData.error || `Server responded with status: ${response.status}`
+  //         )
+  //       }
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`)
-      }
+  //       const result = await response.json()
+  //       console.log('Server response:', result)
 
-      const result = await response.json()
-      console.log('Server response:', result)
+  //       setIsSuccess(true)
+  //     } catch (error) {
+  //       console.error('Error submitting form:', error)
+  //       // You could add error state handling here
+  //     } finally {
+  //       setIsSubmitting(false)
+  //     }
+  //   }
 
-      setIsSuccess(true)
-    } catch (error) {
-      console.error('Error submitting form:', error)
-      // You could add error state handling here
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (isSuccess) {
+  if (actionStatus?.serverStatus === 'success') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Card className="w-full max-w-md">
@@ -142,7 +141,7 @@ export const WifiMarketing = () => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={formSubmitAction} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -171,12 +170,18 @@ export const WifiMarketing = () => {
                 )}
               />
 
+              <input type="hidden" name="clientMac" value={clientMac} />
+              <input type="hidden" name="apMac" value={apMac} />
+              <input type="hidden" name="site" value={site} />
+              <input type="hidden" name="ssid" value={ssid} />
+              <input type="hidden" name="token" value={token} />
+
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800"
-                disabled={isSubmitting}
+                disabled={isPending}
               >
-                {isSubmitting ? 'Connecting...' : 'Connect to WiFi'}
+                {isPending ? 'Connecting...' : 'Connect to WiFi'}
               </Button>
 
               <p className="text-muted-foreground mt-4 text-center text-xs">
@@ -185,6 +190,11 @@ export const WifiMarketing = () => {
               </p>
             </form>
           </Form>
+          {actionStatus && (
+            <p className="text-muted-foreground mt-4 text-center text-xs">
+              {actionStatus.serverStatus}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
