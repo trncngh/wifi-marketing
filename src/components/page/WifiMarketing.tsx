@@ -33,8 +33,9 @@ export const WifiMarketing = () => {
   const clientMac = searchParams.get('clientMac') || ''
   const token = searchParams.get('token') || ''
   const apMac = searchParams.get('apMac') || ''
-  const ssid = searchParams.get('ssidName') || ''
-
+  const ssidName = searchParams.get('ssidName') || ''
+  const authType = searchParams.get('authType') || '4'
+  const time = searchParams.get('t') || ''
   // Initialize form
   const form = useForm<TFormWifi>({
     resolver: zodResolver(FormWifi),
@@ -44,7 +45,9 @@ export const WifiMarketing = () => {
       clientMac,
       apMac,
       site,
-      ssid,
+      ssidName,
+      authType,
+      time,
     },
   })
 
@@ -58,50 +61,6 @@ export const WifiMarketing = () => {
       formAction(data)
     })
   })
-
-  // Handle form submission
-  //   async function onSubmit(data: FormValues) {
-  //     setIsSubmitting(true)
-
-  //     try {
-  //       // Log all form data and URL parameters
-  //       const formData = {
-  //         ...data,
-  //         clientMac,
-  //         apMac,
-  //         site,
-  //         ssid,
-  //         token,
-  //       }
-
-  //       console.log('Form submission data:', formData)
-
-  //       const response = await fetch(`/api/omada-auth`, {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify(formData),
-  //       })
-
-  //       if (!response.ok) {
-  //         const errorData = await response.json()
-  //         throw new Error(
-  //           errorData.error || `Server responded with status: ${response.status}`
-  //         )
-  //       }
-
-  //       const result = await response.json()
-  //       console.log('Server response:', result)
-
-  //       setIsSuccess(true)
-  //     } catch (error) {
-  //       console.error('Error submitting form:', error)
-  //       // You could add error state handling here
-  //     } finally {
-  //       setIsSubmitting(false)
-  //     }
-  //   }
 
   if (actionStatus?.serverStatus === 'success') {
     return (
@@ -173,7 +132,7 @@ export const WifiMarketing = () => {
               <input type="hidden" name="clientMac" value={clientMac} />
               <input type="hidden" name="apMac" value={apMac} />
               <input type="hidden" name="site" value={site} />
-              <input type="hidden" name="ssid" value={ssid} />
+              <input type="hidden" name="ssidName" value={ssidName} />
               <input type="hidden" name="token" value={token} />
 
               <Button
@@ -190,9 +149,14 @@ export const WifiMarketing = () => {
               </p>
             </form>
           </Form>
-          {actionStatus && (
-            <p className="text-muted-foreground mt-4 text-center text-xs">
+          {actionStatus.serverStatus === 'success' && (
+            <p className="mt-4 text-center text-xs text-green-300">
               {actionStatus.serverStatus}
+            </p>
+          )}
+          {actionStatus.serverStatus === 'error' && (
+            <p className="mt-4 text-center text-xs text-red-300">
+              {actionStatus.error}
             </p>
           )}
         </CardContent>
