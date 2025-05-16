@@ -1,11 +1,10 @@
 import { WifiMarketing } from '@/components/page/WifiMarketing'
 import { Wifi } from 'lucide-react'
-// Form schema with validation
+import { Suspense } from 'react'
 
 export default function WifiAuthPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Hero Section */}
       <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-700 px-4 py-12 text-white">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 flex justify-center">
@@ -21,7 +20,9 @@ export default function WifiAuthPage() {
             internet access.
           </p>
         </div>
-        <WifiMarketing />
+        <Suspense fallback={<div>Loading...</div>}>
+          <WifiMarketing />
+        </Suspense>
       </div>
     </div>
   )
