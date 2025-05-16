@@ -1,29 +1,29 @@
 'use server'
 
-import { headers } from 'next/headers'
+import { deviceAuthorization } from '@/lib/service/onPremiseController.service'
+import { redirect } from 'next/navigation'
 import { TFormWifi } from '../validation/formWifi.zod'
-
 export const submitWifiForm = async (
   _actionStatus: object,
   data: TFormWifi
 ): Promise<{ serverStatus?: string; error?: string | null }> => {
-  //   const { name, phone } = formData
-  const headersList = await headers()
-  const host = headersList.get('host')
-  const url =
-    process.env.NODE_ENV === 'development'
-      ? `http://${host}`
-      : `https://${host}`
-  console.log(data)
+  const { clientMac, apMac, site, ssidName, authType, time } = data
+  //{name, phone}'s gonna be sent to the other service
   try {
-    const response = await fetch(`${url}/api/omada-auth`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+    const deviceSessionResponse = await deviceAuthorization({
+      clientMac,
+      apMac,
+      site,
+      ssidName,
+      authType,
+      time,
     })
 
-    if (!response.ok) {
+    if (deviceSessionResponse.errorCode !== 0) {
       throw new Error('Failed to submit form')
     }
+
+    redirect('https://mangden.xyz/')
 
     return {
       serverStatus: 'success',

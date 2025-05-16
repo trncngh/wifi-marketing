@@ -11,7 +11,9 @@ export const FormWifi = z.object({
   clientMac: z.string().optional(),
   apMac: z.string().optional(),
   site: z.string().optional(),
-  ssid: z.string().optional(),
+  ssidName: z.string().optional(),
+  authType: z.string().optional(),
+  time: z.string().optional(),
 })
 
 export type TFormWifi = z.infer<typeof FormWifi>
