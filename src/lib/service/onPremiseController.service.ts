@@ -8,6 +8,15 @@ type TControllerResponse = {
   }
 }
 
+type TDeviceSession = {
+  clientMac?: string
+  apMac?: string
+  site?: string
+  ssidName?: string
+  authType?: string
+  time?: string
+}
+
 // Create a client-side axios instance
 const createClientAxiosInstance = () => {
   return axios.create({
@@ -21,91 +30,14 @@ const createClientAxiosInstance = () => {
   })
 }
 
-export const getCsrfToken = async (
-  name: string,
-  password: string
-): Promise<{ token: string; sessionId: string; cookieString: string }> => {
-  try {
-    const axiosInstance = createClientAxiosInstance()
-    const response = await axiosInstance.post('/api/v2/hotspot/login', {
-      name,
-      password,
-    })
-    console.log('Login response:', response.data)
-
-    // Extract session ID from cookies
-    const cookies = response.headers['set-cookie']
-
-    if (!cookies || cookies.length === 0) {
-      throw new Error('No session cookie received')
-    }
-
-    // Find the TPOMADA_SESSIONID cookie
-    const sessionCookie = cookies.find((cookie) =>
-      cookie.startsWith('TPOMADA_SESSIONID=')
-    )
-    if (!sessionCookie) {
-      throw new Error('TPOMADA_SESSIONID cookie not found')
-    }
-
-    // Extract just the session ID value
-    const sessionId = sessionCookie.split(';')[0].split('=')[1]
-    console.log('Extracted session ID:', sessionId)
-
-    // Get the complete cookie string
-    const cookieString = sessionCookie.split(';')[0] // Get just the name=value part
-
-    return {
-      token: response.data.result.token,
-      sessionId,
-      cookieString,
-    }
-  } catch (error) {
-    console.error('Error in getCsrfToken:', error)
-    throw new Error('Failed to get csrf token')
-  }
-}
-
-type TDeviceSession = {
-  clientMac?: string
-  apMac?: string
-  site?: string
-  ssidName?: string
-  authType?: string
-  time?: string
-}
-
 export const deviceAuthorization = async (
   deviceSession: TDeviceSession
 ): Promise<TControllerResponse> => {
-  const { clientMac, apMac, site, ssidName, authType, time } = deviceSession
-
   try {
-    // Get fresh operator info and CSRF token
-    const { name, password } = await getOperatorInfo()
-    const { token: csrfToken, cookieString } = await getCsrfToken(
-      name,
-      password
-    )
-
     const axiosInstance = createClientAxiosInstance()
-    // Use the same axios instance to maintain cookies
     const response = await axiosInstance.post(
       '/api/v2/hotspot/extPortal/auth',
-      {
-        clientMac,
-        apMac,
-        site,
-        ssidName,
-        authType,
-        time,
-      },
-      {
-        headers: {
-          'csrf-token': csrfToken,
-          Cookie: cookieString,
-        },
-      }
+      deviceSession
     )
 
     if (
