@@ -17,16 +17,21 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { submitWifiForm } from '@/lib/action/wifi.action'
+import { deviceAuthorization } from '@/lib/service/onPremiseController.service'
 import { FormWifi, TFormWifi } from '@/lib/validation/formWifi.zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { startTransition, useActionState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 export const WifiMarketing = () => {
   const searchParams = useSearchParams()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<{
+    status?: 'success' | 'error'
+    error?: string
+  }>({})
 
   // Get URL parameters directly without state
   const site = searchParams.get('site') || ''
@@ -36,6 +41,7 @@ export const WifiMarketing = () => {
   const ssidName = searchParams.get('ssidName') || ''
   const authType = searchParams.get('authType') || '4'
   const time = searchParams.get('t') || ''
+
   // Initialize form
   const form = useForm<TFormWifi>({
     resolver: zodResolver(FormWifi),
@@ -51,18 +57,35 @@ export const WifiMarketing = () => {
     },
   })
 
-  const [actionStatus, formAction, isPending] = useActionState(submitWifiForm, {
-    serverStatus: undefined,
-    error: undefined,
-  })
+  const onSubmit = async (data: TFormWifi) => {
+    setIsSubmitting(true)
+    try {
+      const { clientMac, apMac, site, ssidName, authType, time } = data
+      const deviceSessionResponse = await deviceAuthorization({
+        clientMac,
+        apMac,
+        site,
+        ssidName,
+        authType,
+        time,
+      })
 
-  const formSubmitAction = form.handleSubmit(async (data) => {
-    startTransition(() => {
-      formAction(data)
-    })
-  })
+      if (deviceSessionResponse.errorCode !== 0) {
+        throw new Error('Failed to submit form')
+      }
 
-  if (actionStatus?.serverStatus === 'success') {
+      setSubmitStatus({ status: 'success' })
+    } catch (error) {
+      setSubmitStatus({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'An error occurred',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (submitStatus.status === 'success') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Card className="w-full max-w-md">
@@ -100,7 +123,7 @@ export const WifiMarketing = () => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={formSubmitAction} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -138,9 +161,9 @@ export const WifiMarketing = () => {
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800"
-                disabled={isPending}
+                disabled={isSubmitting}
               >
-                {isPending ? 'Connecting...' : 'Connect to WiFi'}
+                {isSubmitting ? 'Connecting...' : 'Connect to WiFi'}
               </Button>
 
               <p className="text-muted-foreground mt-4 text-center text-xs">
@@ -149,14 +172,9 @@ export const WifiMarketing = () => {
               </p>
             </form>
           </Form>
-          {actionStatus.serverStatus === 'success' && (
-            <p className="mt-4 text-center text-xs text-green-300">
-              {actionStatus.serverStatus}
-            </p>
-          )}
-          {actionStatus.serverStatus === 'error' && (
+          {submitStatus.status === 'error' && (
             <p className="mt-4 text-center text-xs text-red-300">
-              {actionStatus.error}
+              {submitStatus.error}
             </p>
           )}
         </CardContent>

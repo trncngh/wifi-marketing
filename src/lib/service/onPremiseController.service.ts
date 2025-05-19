@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { axiosInstance } from './axiosInstance'
+
 type TControllerResponse = {
   errorCode?: number
   msg?: string
@@ -8,11 +8,25 @@ type TControllerResponse = {
   }
 }
 
+// Create a client-side axios instance
+const createClientAxiosInstance = () => {
+  return axios.create({
+    baseURL: '/api/proxy',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    withCredentials: true,
+  })
+}
+
 export const getCsrfToken = async (
   name: string,
   password: string
 ): Promise<{ token: string; sessionId: string; cookieString: string }> => {
   try {
+    const axiosInstance = createClientAxiosInstance()
     const response = await axiosInstance.post('/api/v2/hotspot/login', {
       name,
       password,
@@ -74,6 +88,7 @@ export const deviceAuthorization = async (
       password
     )
 
+    const axiosInstance = createClientAxiosInstance()
     // Use the same axios instance to maintain cookies
     const response = await axiosInstance.post(
       '/api/v2/hotspot/extPortal/auth',
@@ -111,6 +126,7 @@ export const deviceAuthorization = async (
       console.error('Request URL:', error.config?.url)
       console.error('Request data:', error.config?.data)
     }
+    console.log(error)
     throw new Error('Failed to authorize device')
   }
 }
@@ -120,8 +136,8 @@ export const getOperatorInfo = async (): Promise<{
   name: string
   password: string
 }> => {
-  const operatorName = process.env.OPERATOR_NAME
-  const operatorPassword = process.env.OPERATOR_PASSWORD
+  const operatorName = process.env.NEXT_PUBLIC_OPERATOR_NAME
+  const operatorPassword = process.env.NEXT_PUBLIC_OPERATOR_PASSWORD
 
   if (!operatorName || !operatorPassword) {
     throw new Error('Operator name or password is not set')
